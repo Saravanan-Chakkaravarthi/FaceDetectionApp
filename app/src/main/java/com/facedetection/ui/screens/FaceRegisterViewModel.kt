@@ -2,9 +2,8 @@ package com.facedetection.ui.screens
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.facedetection.data.repository.FaceDetectionRepository
-import com.google.mlkit.vision.common.InputImage
 import com.google.mlkit.vision.face.Face
+import com.google.mlkit.vision.face.FaceLandmark
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -13,9 +12,7 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @HiltViewModel
-class FaceRegisterViewModel @Inject constructor(
-    private val repository: FaceDetectionRepository
-) : ViewModel() {
+class FaceRegisterViewModel @Inject constructor() : ViewModel() {
     private val _uiState = MutableStateFlow(FaceRegisterUiState())
     val uiState: StateFlow<FaceRegisterUiState> = _uiState
 
@@ -23,37 +20,77 @@ class FaceRegisterViewModel @Inject constructor(
     private var leftFace: Face? = null
     private var rightFace: Face? = null
 
-    fun processCapturedImage(image: InputImage) {
+    fun processCapturedImage(faceStatus: FaceStatus, face: Face) {
         viewModelScope.launch {
-            val detectedFace = repository.detectFace(image)
-            if (detectedFace != null) {
-                when (_uiState.value.faceStatus) {
-                    FaceStatus.CAPTURING_CENTER -> {
-                        centerFace = detectedFace
-                        _uiState.update { it.copy(centerCaptured = true, faceStatus = FaceStatus.CAPTURING_LEFT) }
-                    }
-                    FaceStatus.CAPTURING_LEFT -> {
-                        if (repository.validateFaceMatch(centerFace!!, detectedFace)) {
-                            leftFace = detectedFace
-                            _uiState.update { it.copy(leftCaptured = true, faceStatus = FaceStatus.CAPTURING_RIGHT) }
-                        } else {
-                            _uiState.update { it.copy(errorMessage = "Faces don't match, please adjust.") }
+            when (faceStatus) {
+                FaceStatus.CAPTURING_CENTER -> {
+                    if (!_uiState.value.centerCaptured) {
+                        centerFace = face
+                        _uiState.update {
+                            it.copy(
+                                centerCaptured = true,
+                                faceStatus = FaceStatus.CAPTURING_LEFT
+                            )
                         }
                     }
-                    FaceStatus.CAPTURING_RIGHT -> {
-                        if (repository.validateFaceMatch(centerFace!!, detectedFace)) {
-                            rightFace = detectedFace
-                            _uiState.update { it.copy(rightCaptured = true, faceStatus = FaceStatus.COMPLETED) }
-                        } else {
-                            _uiState.update { it.copy(errorMessage = "Faces don't match, please adjust.") }
-                        }
-                    }
-                    else -> Unit
                 }
-            } else {
-                _uiState.update { it.copy(errorMessage = "No face detected. Please try again.") }
+
+                FaceStatus.CAPTURING_LEFT -> {
+                    if (_uiState.value.centerCaptured && !_uiState.value.leftCaptured) {
+                        if (validateFaceMatch(centerFace!!, face)) {
+                            leftFace = face
+                            _uiState.update {
+                                it.copy(
+                                    leftCaptured = true,
+                                    faceStatus = FaceStatus.CAPTURING_RIGHT
+                                )
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(errorMessage = "Left face doesn't match the center face. Please try again.")
+                            }
+                        }
+                    }
+                }
+
+                FaceStatus.CAPTURING_RIGHT -> {
+                    if (_uiState.value.centerCaptured && _uiState.value.leftCaptured && !_uiState.value.rightCaptured) {
+                        if (validateFaceMatch(centerFace!!, face)) {
+                            rightFace = face
+                            _uiState.update {
+                                it.copy(
+                                    rightCaptured = true,
+                                    faceStatus = FaceStatus.COMPLETED
+                                )
+                            }
+                        } else {
+                            _uiState.update {
+                                it.copy(errorMessage = "Right face doesn't match the center face. Please try again.")
+                            }
+                        }
+                    }
+                }
+
+                else -> {
+                    _uiState.update {
+                        it.copy(errorMessage = "Unexpected face position. Please align correctly.")
+                    }
+                }
             }
         }
+    }
+
+    fun validateFaceMatch(face1: Face, face2: Face): Boolean {
+        val leftEye1 = face1.getLandmark(FaceLandmark.LEFT_EYE)?.position
+        val leftEye2 = face2.getLandmark(FaceLandmark.LEFT_EYE)?.position
+
+        val rightEye1 = face1.getLandmark(FaceLandmark.RIGHT_EYE)?.position
+        val rightEye2 = face2.getLandmark(FaceLandmark.RIGHT_EYE)?.position
+
+        val noseBase1 = face1.getLandmark(FaceLandmark.NOSE_BASE)?.position
+        val noseBase2 = face2.getLandmark(FaceLandmark.NOSE_BASE)?.position
+
+        return leftEye1 == leftEye2 && rightEye1 == rightEye2 && noseBase1 == noseBase2
     }
 
     fun submitFaceData() {
