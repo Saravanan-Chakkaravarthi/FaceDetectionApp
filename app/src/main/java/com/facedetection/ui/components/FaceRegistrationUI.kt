@@ -40,7 +40,7 @@ fun FaceRegistrationUI(
             .fillMaxSize()
             .background(Color(0xFF1E88E5))
     ) {
-        // Close button at the top right
+        // Close button
         IconButton(
             onClick = onClose,
             modifier = Modifier
@@ -59,13 +59,13 @@ fun FaceRegistrationUI(
             verticalArrangement = Arrangement.Center,
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Camera Preview with Face Detection
+            // Camera Preview
             CameraPreviewWithFaceDetection(
                 onFaceDetected = { face, faceStatus ->
                     onCapture(face, faceStatus)
                 },
                 modifier = Modifier
-                    .size(250.dp)
+                    .size(300.dp)
                     .clip(CircleShape)
                     .background(Color.White)
             )
@@ -79,12 +79,30 @@ fun FaceRegistrationUI(
                     FaceStatus.CAPTURING_LEFT -> "Turn your head slightly to the left"
                     FaceStatus.CAPTURING_RIGHT -> "Turn your head slightly to the right"
                     FaceStatus.COMPLETED -> "Face capture completed"
-                    else -> "Align your face within the circle"
+                    else -> uiState.errorMessage ?: "Align your face within the circle"
                 },
                 style = MaterialTheme.typography.bodyLarge,
                 color = Color.White,
                 textAlign = TextAlign.Center
             )
+
+            if (uiState.successMessage != null) {
+                // Populate success message if available
+                Text(
+                    text = uiState.successMessage,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Green,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            } else if (uiState.errorMessage != null) {
+                // Populate error message if available
+                Text(
+                    text = uiState.errorMessage,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = Color.Red,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)
+                )
+            }
 
             Spacer(modifier = Modifier.height(32.dp))
 

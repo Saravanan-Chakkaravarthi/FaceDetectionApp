@@ -8,7 +8,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.hilt.navigation.compose.hiltViewModel
 import com.facedetection.ui.components.ExitAlertDialog
@@ -16,7 +15,6 @@ import com.facedetection.ui.components.FaceRegistrationUI
 
 @Composable
 fun FaceRegisterScreen(
-    modifier: Modifier = Modifier,
     viewModel: FaceRegisterViewModel = hiltViewModel()
 ) {
     val context = LocalContext.current

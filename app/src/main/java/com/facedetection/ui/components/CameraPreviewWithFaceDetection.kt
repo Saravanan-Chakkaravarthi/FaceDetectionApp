@@ -1,6 +1,5 @@
 package com.facedetection.ui.components
 
-import android.graphics.Rect
 import android.util.Log
 import androidx.annotation.OptIn
 import androidx.camera.core.CameraSelector
@@ -79,7 +78,7 @@ private fun processImageProxy(
     val inputImage = InputImage.fromMediaImage(mediaImage, imageProxy.imageInfo.rotationDegrees)
     val detector = FaceDetection.getClient(
         FaceDetectorOptions.Builder()
-            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_FAST)
+            .setPerformanceMode(FaceDetectorOptions.PERFORMANCE_MODE_ACCURATE)
             .setLandmarkMode(FaceDetectorOptions.LANDMARK_MODE_ALL)
             .setClassificationMode(FaceDetectorOptions.CLASSIFICATION_MODE_NONE)
             .build()
@@ -89,7 +88,7 @@ private fun processImageProxy(
         .addOnSuccessListener { faces ->
             if (faces.isNotEmpty()) {
                 val face = faces.first()
-                val faceStatus = getFaceStatus(face.boundingBox)
+                val faceStatus = getFaceStatus(face)
                 onFaceDetected(face, faceStatus)
             }
         }
@@ -97,15 +96,10 @@ private fun processImageProxy(
         .addOnCompleteListener { imageProxy.close() }
 }
 
-private fun getFaceStatus(boundingBox: Rect): FaceStatus {
-    val faceCenterX = boundingBox.centerX()
-    val imageWidth = 300
-    val imageCenterX = imageWidth / 2
+private fun getFaceStatus(face: Face): FaceStatus {
     return when {
-        faceCenterX < imageCenterX - (imageWidth / 4) -> FaceStatus.CAPTURING_LEFT
-        faceCenterX > imageCenterX + (imageWidth / 4) -> FaceStatus.CAPTURING_RIGHT
+        face.headEulerAngleY < -15 -> FaceStatus.CAPTURING_LEFT
+        face.headEulerAngleY > 15 -> FaceStatus.CAPTURING_RIGHT
         else -> FaceStatus.CAPTURING_CENTER
     }
 }
-
-
